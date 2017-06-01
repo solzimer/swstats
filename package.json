@@ -1,0 +1,27 @@
+{
+  "name": "swstats",
+  "version": "0.0.1",
+  "description": "Sliding window statistics",
+  "author": "David Gómez Matarrodona <solzimer@gmail.com>",
+  "url": "https://github.com/owner/project/issues",
+  "email": "solzimer@gmail.com",
+  "main": "main.js",
+  "license": "MIT",
+  "repository": "solzimer/swstats",
+  "keywords": [
+    "stats",
+    "statistics",
+    "slide",
+    "sliding",
+    "window",
+    "average",
+    "mode",
+    "count",
+    "sum",
+    "deviation"
+  ],
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}
