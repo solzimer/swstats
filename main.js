@@ -1,9 +1,21 @@
 const NOps = require("./nops.js");
+const COps = require("./cops.js");
 
 const IVAL = 1000;
 const LIST = [];
 const DEF_NOPS = ["count","sum","avg","stdev"];
-const DEF_COPS = ["sum","count","freq"];
+const DEF_COPS = ["sum","freq","mode"];
+
+function clone(obj) {
+	if(typeof(obj)!="object") {
+		return obj;
+	}
+	else {
+		var o = {};
+		for(var i in obj) o[i] = clone(obj[i]);
+		return o;
+	}
+}
 
 setInterval(()=>{
 	var now = Date.now();
@@ -15,38 +27,46 @@ setInterval(()=>{
 		while(arr.length && now-arr[0].t>time)
 			old.push(arr.shift());
 
+		if(old.length) debugger;
+
 		sws._ops.forEach(op=>{
-			sws.stats[op] = NOps[op](sws.stats[op],[],old,sws._arr,sws.stats,oldstats);
+			sws.stats[op] = sws._cat?
+				COps[op](sws.stats[op],[],old,sws._arr,sws.stats,oldstats) :
+				NOps[op](sws.stats[op],[],old,sws._arr,sws.stats,oldstats);
 		});
 	});
 },IVAL);
 
-function clone(obj) {
-	var o = {};
-	for(var i in obj) o[i] = obj[i];
-	return o;
-}
 class TimeStats {
-	constructor(time,ops) {
+	constructor(time,cat,ops) {
 		this._arr = [];
 		this._time = time || 10000;
-		this._ops = ops || DEF_NOPS;
-		this._step = 1;
+		this._cat = cat===true;
+		this._ops = ops || (cat? DEF_COPS : DEF_NOPS);
+		this._step = 1000;
 		this._oldstats = {};
 		this.stats = {};
 		LIST.push(this);
 	}
+
 	push(vals) {
+		vals = vals instanceof Array? vals : [vals];
+
+		return this._cat?
+			this._pushCat(vals) :
+			this._pushNum(vals);
+	}
+
+	_pushNum(vals) {
 		var now = Date.now();
 		var arr = this._arr;
 		var oldstats = clone(this.stats);
 
-		if(!arr.length) arr.push({t:now,v:0,l:0});
-		var last = arr[arr.length-1];
-		last = {t:last.t,v:last.v,l:last.l};
-
-		vals = (vals instanceof Array? vals : [vals]);
 		vals = vals.map(v=>{return {t:now,v:v,l:1};});
+
+		if(!arr.length) arr.push({t:now,v:0,l:0});
+		var last = clone(arr[arr.length-1]);
+
 		if(now-last.t < this._step) {
 			vals.forEach(v=>{last.v+=v.v; last.l+=1;});
 			var oa = [arr.pop()], na = [last];
@@ -59,6 +79,42 @@ class TimeStats {
 			vals.forEach(v=>{arr.push(v)});
 			this._ops.forEach(op=>{
 				this.stats[op] = NOps[op](this.stats[op],vals,[],arr,this.stats,oldstats);
+			});
+		}
+
+		return this;
+	}
+
+	_pushCat(vals) {
+		var now = Date.now();
+		var arr = this._arr;
+		var oldstats = clone(this.stats);
+		var map = {}
+
+		vals.forEach(v=>{
+			map[v] = map[v] || 0;
+			map[v]++;
+		});
+
+		if(!arr.length) arr.push({t:now,v:{}});
+		var last = clone(arr[arr.length-1]);
+
+		if(now-last.t < this._step) {
+			for(let i in map) {
+				last.v[i] = last.v[i] || 0;
+				last.v[i] += map[i];
+			}
+			var oa = [arr.pop()], na = [last];
+			arr.push(last);
+			this._ops.forEach(op=>{
+				this.stats[op] = COps[op](this.stats[op],na,oa,arr,this.stats,oldstats);
+			});
+		}
+		else {
+			var item = {t:now,v:map};
+			arr.push(item);
+			this._ops.forEach(op=>{
+				this.stats[op] = COps[op](this.stats[op],[item],[],arr,this.stats,oldstats);
 			});
 		}
 
@@ -91,22 +147,12 @@ class SizeStats {
 	}
 }
 
-var a = new TimeStats;
+var a = new TimeStats(10000,true);
 
 setInterval(()=>{
-	a.push(Math.random()*10);
+	a.push(Math.random()>0.5?"paco":"pepe");
 });
 
 setInterval(()=>{
 	console.log(a.stats);
 },100);
-
-/*
-var a = [1,3,4,7,8,1,3,2,2,2,4,3];
-var avg = a.reduce((curr,val)=>curr+val,0) / a.length;
-var asum = a.reduce((curr,val)=>curr+Math.pow(val-avg,2),0);
-var bsum = a.reduce((curr,val)=>curr+val*val,0) + avg*avg*a.length - 2*a.reduce((curr,val)=>curr+val*avg,0);
-var stdev1 = Math.sqrt(asum/a.length);
-var stdev2 = Math.sqrt(bsum/a.length);
-console.log(avg,stdev1,stdev2);
-*/

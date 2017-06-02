@@ -9,7 +9,7 @@ module.exports = {
 		var ln = newitems.length, lo = olditems.length;
 		for(let i=0;i<ln;i++) currval += newitems[i].v;
 		for(let i=0;i<lo;i++) currval -= olditems[i].v;
-		//console.log(newitems,olditems,currval);
+		
 		return currval;
 	},
 	avg(currval,newitems,olditems,allitems,newstats,oldstats) {
