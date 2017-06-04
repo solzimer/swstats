@@ -83,7 +83,7 @@ class TimeStats {
 	destroy() {
 
 	}
-	
+
 	_pushNum(vals) {
 		var now = Date.now();
 		var arr = this._arr;
@@ -201,7 +201,7 @@ class SizeStats {
 		}
 
 		this._ops.forEach(op=>{
-			this.stats[op] = COps[op](this.stats[op],vals,old,arr,this.stats,oldstats);
+			this.stats[op] = COps[op](this.stats[op],[map],old,arr,this.stats,oldstats);
 		});
 
 		return this;
