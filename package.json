@@ -1,6 +1,6 @@
 {
   "name": "swstats",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Sliding window statistics",
   "author": "David Gómez Matarrodona <solzimer@gmail.com>",
   "url": "https://github.com/owner/project/issues",
@@ -20,8 +20,6 @@
     "sum",
     "deviation"
   ],
-  "dependencies": {
-  },
-  "devDependencies": {
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
