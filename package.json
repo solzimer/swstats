@@ -16,6 +16,7 @@
     "window",
     "average",
     "mode",
+    "frequency",
     "count",
     "sum",
     "deviation"
