@@ -208,12 +208,7 @@ class SizeStats {
 	}
 }
 
-var a = new SizeStats(10000,{category:true});
-
-setInterval(()=>{
-	a.push(Math.random()>0.5?"paco":"pepe");
-});
-
-setInterval(()=>{
-	console.log(a.stats);
-},100);
+module.exports = {
+	TimeStats : TimeStats,
+	SizeStats : SizeStats
+}
