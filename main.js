@@ -4,22 +4,24 @@ const COps = require("./cops.js");
 const IVAL = 1000;	// Slide window interval
 const LIST = [];		// Active window instances
 
-// Default operations
-const DEF_NOPS = ["count","sum","avg","stdev"];
-const DEF_COPS = ["sum","freq","mode"];
-
-// Default options
-const DEF_OPTIONS = {
-	category : false,
-	ops : DEF_NOPS,
-	step : 1000
-}
-
 // Stats function type constants
 const TYPES = {
 	numeric : "numeric",
 	category : "category"
 };
+
+// Default operations
+const DEF_OPS = {
+	numeric : ["count","sum","avg","stdev"],
+	category : ["sum","freq","mode"]
+}
+
+// Default options
+const DEF_OPTIONS = {
+	type : TYPES.numeric,
+	ops : DEF_OPS.numeric,
+	step : 1000
+}
 
 // Registered operations
 const OPS = {
@@ -59,29 +61,43 @@ function clone(obj) {
  * fn(currval,newitems,olditems,allitems,newstats,oldstats)
  */
 function register(type,name,deps,fn) {
-	OPS[type][name] = {fn:fn,deps:deps}
+	OPS[type][name] = {fn:fn,deps:deps};
+}
+
+function depends(a,b,type) {
+	var deps = OPS[type][a].deps;
+	if(!deps.length) return false;
+	else if(deps.indexOf(b)>=0) return true;
+	else {
+		return deps.reduce((curr,val)=>curr||depends(val,b,type),false);
+	}
 }
 
 /**
  * Sorts category operations by its dependencies
  */
-function sortCategory(a,b) {
-	var oa = OPS.category[a];
-	var ob = OPS.category[b];
-	if(oa.deps.indexOf(b)>=0) return 1;
-	else if(ob.deps.indexOf(a)>=0) return -1;
-	else return 0;
-}
+function sortOps(ops,type) {
+	var map = {}, n = false;
 
-/**
- * Sorts numeric operations by its dependencies
- */
-function sortNumeric(a,b) {
-	var oa = OPS.numeric[a];
-	var ob = OPS.numeric[b];
-	if(oa.deps.indexOf(b)>=0) return 1;
-	else if(ob.deps.indexOf(a)>=0) return -1;
-	else return 0;
+	ops.forEach(op=>map[op] = true);
+	do {
+		n = false;
+		ops.forEach(op=>{
+			OPS[type][op].deps.forEach(dep=>{
+				if(!map[dep]) {
+					map[dep] = true;
+					ops.push(dep);
+					n = true;
+				};
+			});
+		});
+	}while(n);
+
+	ops.sort((a,b)=>{
+		if(depends(a,b,type)) return 1;
+		else if(depends(b,a,type)) return -1;
+		else return 0;
+	});
 }
 
 /**
@@ -93,6 +109,7 @@ setInterval(()=>{
 	// For each stat created object
 	LIST.filter(sws=>!sws._pause).forEach(sws=>{
 		var arr = sws._arr, time = sws._time;
+		var type = sts._type;
 		var old = [];
 		var oldstats = clone(sws.stats);
 
@@ -102,9 +119,7 @@ setInterval(()=>{
 
 		// Execute each stat operation over the remaining slots
 		sws._ops.forEach(op=>{
-			sws.stats[op] = sws._cat?
-				COps[op](sws.stats[op],[],old,sws._arr,sws.stats,oldstats) :
-				NOps[op](sws.stats[op],[],old,sws._arr,sws.stats,oldstats);
+			sws.stats[op] = OPS[type][op].fn(sws.stats[op],[],old,sws._arr,sws.stats,oldstats);
 		});
 	});
 },IVAL);
@@ -119,14 +134,15 @@ class TimeStats {
 		options = options || DEF_OPTIONS
 		this._arr = [];
 		this._time = time || 10000;
-		this._cat = options.category;
-		this._ops = options.ops || (this._cat? DEF_COPS : DEF_NOPS);
+		this._type = options.type || DEF_OPTIONS.type;
+		this._ops = options.ops || DEF_OPS[this._type];
 		this._step = options.step || DEF_OPTIONS.step;
 		this._pause = false;
 		this._active = true;
 		this._oldstats = {};
 		this.stats = clone(options.stats||{});
-		this._ops.sort(this._cat? sortCategory : sortNumeric);
+
+		sortOps(this._ops,this._type);
 		LIST.push(this);
 	}
 
@@ -135,9 +151,9 @@ class TimeStats {
 
 		vals = vals instanceof Array? vals : [vals];
 
-		return this._cat?
-			this._pushCat(vals) :
-			this._pushNum(vals);
+		return this._type==TYPES.numeric?
+			this._pushNum(vals) :
+			this._pushCat(vals);
 	}
 
 	pause() {
@@ -164,6 +180,7 @@ class TimeStats {
 	_pushNum(vals) {
 		var now = Date.now();
 		var arr = this._arr;
+		var type = this._type;
 		var oldstats = clone(this.stats);
 
 		vals = vals.map(v=>{return {t:now,v:v,l:1};});
@@ -176,13 +193,13 @@ class TimeStats {
 			var oa = [arr.pop()], na = [last];
 			arr.push(last);
 			this._ops.forEach(op=>{
-				this.stats[op] = NOps[op](this.stats[op],na,oa,arr,this.stats,oldstats);
+				this.stats[op] = OPS[type][op].fn(this.stats[op],na,oa,arr,this.stats,oldstats);
 			});
 		}
 		else {
 			vals.forEach(v=>{arr.push(v)});
 			this._ops.forEach(op=>{
-				this.stats[op] = NOps[op](this.stats[op],vals,[],arr,this.stats,oldstats);
+				this.stats[op] = OPS[type][op].fn(this.stats[op],vals,[],arr,this.stats,oldstats);
 			});
 		}
 
@@ -192,6 +209,7 @@ class TimeStats {
 	_pushCat(vals) {
 		var now = Date.now();
 		var arr = this._arr;
+		var type = this._type;
 		var oldstats = clone(this.stats);
 		var map = {}
 
@@ -211,14 +229,14 @@ class TimeStats {
 			var oa = [arr.pop()], na = [last];
 			arr.push(last);
 			this._ops.forEach(op=>{
-				this.stats[op] = COps[op](this.stats[op],na,oa,arr,this.stats,oldstats);
+				this.stats[op] = OPS[type][op].fn(this.stats[op],na,oa,arr,this.stats,oldstats);
 			});
 		}
 		else {
 			var item = {t:now,v:map};
 			arr.push(item);
 			this._ops.forEach(op=>{
-				this.stats[op] = COps[op](this.stats[op],[item],[],arr,this.stats,oldstats);
+				this.stats[op] = OPS[type][op].fn(this.stats[op],[item],[],arr,this.stats,oldstats);
 			});
 		}
 
@@ -237,23 +255,24 @@ class SizeStats {
 
 		this._arr = [];
 		this._size = size || 1000;
-		this._cat = options.category;
-		this._ops = options.ops || (this._cat? DEF_COPS : DEF_NOPS);
+		this._type = options.type || DEF_OPTIONS.type;
+		this._ops = options.ops || DEF_OPS[this._type];
 		this.stats = clone(options.stats||{});
-		this._ops.sort(this._cat? sortCategory : sortNumeric);
-		console.log(this._ops);
+
+		sortOps(this._ops,this._type);
 	}
 
 	push(vals) {
 		vals = vals instanceof Array? vals : [vals];
 
-		return this._cat?
-			this._pushCat(vals) :
-			this._pushNum(vals);
+		return this._type==TYPES.numeric?
+			this._pushNum(vals) :
+			this._pushCat(vals);
 	}
 
 	_pushNum(vals) {
 		var arr = this._arr, old = [];
+		var type = this._type;
 		var oldstats = clone(this.stats);
 
 		vals = vals.map(v=>{return {v:v,l:1};});
@@ -264,7 +283,7 @@ class SizeStats {
 		}
 
 		this._ops.forEach(op=>{
-			this.stats[op] = NOps[op](this.stats[op],vals,old,arr,this.stats,oldstats);
+			this.stats[op] = OPS[type][op].fn(this.stats[op],vals,old,arr,this.stats,oldstats);
 		});
 
 		return this;
@@ -272,6 +291,7 @@ class SizeStats {
 
 	_pushCat(vals) {
 		var arr = this._arr, old = [];
+		var type = this._type;
 		var oldstats = clone(this.stats);
 		var map = {v:{}};
 
@@ -286,7 +306,7 @@ class SizeStats {
 		}
 
 		this._ops.forEach(op=>{
-			this.stats[op] = COps[op](this.stats[op],[map],old,arr,this.stats,oldstats);
+			this.stats[op] = OPS[type][op].fn(this.stats[op],[map],old,arr,this.stats,oldstats);
 		});
 
 		return this;
