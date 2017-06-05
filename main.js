@@ -147,7 +147,7 @@ class TimeStats {
 	}
 
 	push(vals) {
-		if(!this._active) return;
+		if(!this._active || this._pause) return;
 
 		vals = vals instanceof Array? vals : [vals];
 
