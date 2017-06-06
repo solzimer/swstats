@@ -34,7 +34,7 @@ const OPS = {
 	category : {
 		"sum" : {fn:COps.sum,deps:[]},
 		"freq" : {fn:COps.freq,deps:["sum"]},
-		"mode" : {fn:COps.sum,deps:["sum"]}
+		"mode" : {fn:COps.mode,deps:["sum"]}
 	}
 }
 
@@ -59,9 +59,11 @@ function clone(obj) {
  * @param deps Array of dependency names
  * @param fn Stats function to be called, in the form of
  * fn(currval,newitems,olditems,allitems,newstats,oldstats)
+ * @param def Use by default.
  */
-function register(type,name,deps,fn) {
+function register(type,name,deps,fn,def) {
 	OPS[type][name] = {fn:fn,deps:deps};
+	if(def) DEF_OPS[type].push(name);
 }
 
 function depends(a,b,type) {
@@ -131,7 +133,8 @@ setInterval(()=>{
  */
 class TimeStats {
 	constructor(time,options) {
-		options = options || DEF_OPTIONS
+		options = options || DEF_OPTIONS;
+		this._options = options;
 		this._arr = [];
 		this._time = time || 10000;
 		this._type = options.type || DEF_OPTIONS.type;
@@ -144,6 +147,16 @@ class TimeStats {
 
 		sortOps(this._ops,this._type);
 		LIST.push(this);
+	}
+
+	get length() {
+		return this._arr.length;
+	}
+
+	clean() {
+		this._arr = [];
+		this._oldstats = {};
+		this.stats = clone(this._options.stats||{});
 	}
 
 	push(vals) {
@@ -253,6 +266,7 @@ class SizeStats {
 	constructor(size,options) {
 		options = options || DEF_OPTIONS;
 
+		this._options = options;
 		this._arr = [];
 		this._size = size || 1000;
 		this._type = options.type || DEF_OPTIONS.type;
@@ -260,6 +274,16 @@ class SizeStats {
 		this.stats = clone(options.stats||{});
 
 		sortOps(this._ops,this._type);
+	}
+
+	clean() {
+		this._arr = [];
+		this._oldstats = {};
+		this.stats = clone(this._options.stats||{});
+	}
+
+	get length() {
+		return this._arr.length;
 	}
 
 	push(vals) {
