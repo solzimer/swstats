@@ -109,7 +109,7 @@ setInterval(()=>{
 	// For each stat created object
 	LIST.filter(sws=>!sws._pause).forEach(sws=>{
 		var arr = sws._arr, time = sws._time;
-		var type = sts._type;
+		var type = sws._type;
 		var old = [];
 		var oldstats = clone(sws.stats);
 

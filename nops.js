@@ -1,4 +1,4 @@
-module.exports = {
+const OPS = {
 	count(currval,newitems,olditems,allitems,newstats,oldstats) {
 		var t = 0, len = allitems.length;
 		for(var i=0;i<len;i++) t += (allitems[i].l||1);
@@ -9,13 +9,13 @@ module.exports = {
 		var ln = newitems.length, lo = olditems.length;
 		for(let i=0;i<ln;i++) currval += newitems[i].v;
 		for(let i=0;i<lo;i++) currval -= olditems[i].v;
-		
+
 		return currval;
 	},
 	avg(currval,newitems,olditems,allitems,newstats,oldstats) {
 		var
-			ln = this.count(0,0,0,newitems), lo = this.count(0,0,0,olditems),
-			nvl = this.count(0,0,0,allitems), ovl = nvl-ln+lo;
+			ln = OPS.count(0,0,0,newitems), lo = OPS.count(0,0,0,olditems),
+			nvl = OPS.count(0,0,0,allitems), ovl = nvl-ln+lo;
 
 		currval = currval===undefined? 0 : currval;
 		currval = currval * ovl;
@@ -29,8 +29,8 @@ module.exports = {
 		oldstats.stdev = oldstats.stdev || {avg:1,sqsum:0,sum:0,stdev:0};
 
 		var
-			ln = this.count(0,0,0,newitems), lo = this.count(0,0,0,olditems),
-			nvl = this.count(0,0,0,allitems), ovl = nvl-ln+lo,
+			ln = OPS.count(0,0,0,newitems), lo = OPS.count(0,0,0,olditems),
+			nvl = OPS.count(0,0,0,allitems), ovl = nvl-ln+lo,
 			len = allitems.length,
 			oavg = oldstats.avg || 0;
 
@@ -62,3 +62,5 @@ module.exports = {
 		}
 	}
 }
+
+module.exports = OPS;
