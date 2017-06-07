@@ -1,6 +1,7 @@
-# swstats [![Build Status](https://travis-ci.org/solzimer/swstats.svg?branch=master)](https://travis-ci.org/solzimer/swstats)
-
+# swstats
 Sliding window statistics.
+
+[![Build Status](https://travis-ci.org/solzimer/swstats.svg?branch=master)](https://travis-ci.org/solzimer/swstats)
 
 Time and Size sliding windows, capable of calculating incremental statistics, such as count, sum, avg, stdev, freq, etc...
 
