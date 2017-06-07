@@ -14,14 +14,14 @@ const TYPES = {
 const DEF_OPS = {
 	numeric : ["count","sum","avg","stdev"],
 	category : ["sum","freq","mode"]
-}
+};
 
 // Default options
 const DEF_OPTIONS = {
 	type : TYPES.numeric,
 	ops : DEF_OPS.numeric,
 	step : 1000
-}
+};
 
 // Registered operations
 const OPS = {
@@ -36,7 +36,7 @@ const OPS = {
 		"freq" : {fn:COps.freq,deps:["sum"]},
 		"mode" : {fn:COps.mode,deps:["sum"]}
 	}
-}
+};
 
 /**
  * Simple object clone function
@@ -353,4 +353,4 @@ module.exports = {
 	TimeStats : TimeStats,
 	SizeStats : SizeStats,
 	register : register
-}
+};
