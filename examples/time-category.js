@@ -10,10 +10,10 @@ SWindow.register("category","threshold",["freq"],(curr,nvals,ovals,vals,nstats,o
 	return map;
 },true);
 
-var sw = new TimeStats(10000);
+var sw = new TimeStats(10000,{type:"category"});
 
 setInterval(()=>{
-	sw.push(Math.random()>0.6?0.5:0.2);
+	sw.push(Math.random()>0.6?"John":"David");
 });
 
 setInterval(()=>{
