@@ -95,11 +95,23 @@ function sortOps(ops,type) {
 		});
 	}while(n);
 
-	ops.sort((a,b)=>{
-		if(depends(a,b,type)) return 1;
-		else if(depends(b,a,type)) return -1;
-		else return 0;
-	});
+	// Stupid sort because Array.sort will not work with dependency sorting
+	if(ops.length>1) {
+		let tmp = null, it = false;
+		do {
+			it = false;
+			for(let i=0;i<ops.length;i++) {
+				for(let j=i;j<ops.length;j++) {
+					if(depends(ops[i],ops[j],type)) {
+						tmp = ops[i];
+						ops[i] = ops[j];
+						ops[j] = tmp;
+						it = true;
+					}
+				}
+			}
+		}while(it);
+	}
 }
 
 /**
@@ -300,7 +312,7 @@ class SizeStats {
 		var oldstats = clone(this.stats);
 
 		vals = vals.map(v=>{return {v:v,l:1};});
-		this._arr.push(vals);
+		vals.forEach(v=>this._arr.push(v));
 
 		while(this._arr.length>this._size) {
 			old.push(this._arr.shift());
