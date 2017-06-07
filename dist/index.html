@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+	<script src="swstats.min.js"></script>
+</head>
+<body>
+	<textarea id="values" readonly="readonly" cols="40" rows="15"></textarea>
+
+	<script>
+		// Create a time window of 10 secons.
+		// Window will slide on each second
+		var sw = new SWindow.TimeStats(10000,{step:1});
+		var i=0;
+		var ta = document.getElementById("values");
+
+		setInterval(()=>{
+			sw.push(Math.random());
+		},10);
+
+		setInterval(()=>{
+			ta.value = JSON.stringify(sw.stats,null,2);
+		},100);
+	</script>
+</body>
+</html>

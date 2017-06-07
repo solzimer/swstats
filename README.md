@@ -1,11 +1,12 @@
 # swstats
-Sliding window statistics.
+Sliding window statistics for Nodejs and browser.
 
 [![Build Status](https://travis-ci.org/solzimer/swstats.svg?branch=master)](https://travis-ci.org/solzimer/swstats)
 
 Time and Size sliding windows, capable of calculating incremental statistics, such as count, sum, avg, stdev, freq, etc...
 
 ## Features
+* Nodejs and Browser compatible
 * Time or size windows (not both)
 * Numeric or category stats
 * Stats are calculated incrementally, using online algorithms
@@ -20,6 +21,7 @@ npm install swstats
 ```
 
 ## Quick start
+Nodejs:
 ```javascript
 const	SWindow = require("swstats");
 
@@ -37,6 +39,36 @@ setInterval(()=>{
 	console.log(sw.stats);
 },100);
 ```
+or browser:
+```html
+<!doctype html>
+<html>
+<head>
+	<script src="swstats.min.js"></script>
+</head>
+<body>
+	<textarea id="values" readonly="readonly" cols="40" rows="15">
+	</textarea>
+
+	<script>
+		// Create a time window of 10 secons.
+		// Window will slide on each second
+		var sw = new SWindow.TimeStats(10000,{step:1});
+		var i=0;
+		var ta = document.getElementById("values");
+
+		setInterval(()=>{
+			sw.push(Math.random());
+		},10);
+
+		setInterval(()=>{
+			ta.value = JSON.stringify(sw.stats,null,2);
+		},100);
+	</script>
+</body>
+</html>
+```
+
 The results will be something like:
 ```javascript
 { count: 9,
