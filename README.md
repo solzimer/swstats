@@ -37,7 +37,7 @@ setInterval(()=>{
 },100);
 ```
 The results will be something like:
-```json
+```javascript
 { count: 9,
   sum: 4.383476926850223,
   avg: 0.48705299187224704,
@@ -177,7 +177,7 @@ The stats function passed to the *register* method takes the following arguments
 
 The items in the newitems, olditems and allitems arrays, have the following format:
 * For numeric values:
-```json
+```javascript
 {
 	t : 1496843741554,   // Timestamp in unix format (ms)
 	v : 12.34,           // Total value for this slot
@@ -185,7 +185,7 @@ The items in the newitems, olditems and allitems arrays, have the following form
 }
 ```
 * for category values:
-```json
+```javascript
 {
 	t : 1496843741554,   // Timestamp in unix format (ms)
 	v : {                // Total values for this slot
@@ -252,7 +252,7 @@ console.log(sw.stats);
 ```
 
 Results:
-```json
+```javascript
 { decsum:
    { ratio: 0.99,
      weight: 0.13397967485796175,
