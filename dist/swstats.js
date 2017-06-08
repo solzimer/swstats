@@ -81,7 +81,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 		// Default operations
 		var DEF_OPS = {
-			numeric: ["count", "sum", "avg", "stdev"],
+			numeric: ["count", "sum", "max", "min", "avg", "stdev"],
 			category: ["sum", "freq", "mode"]
 		};
 
@@ -97,6 +97,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 			numeric: {
 				"count": { fn: NOps.count, deps: [] },
 				"sum": { fn: NOps.sum, deps: [] },
+				"max": { fn: NOps.max, deps: [] },
+				"min": { fn: NOps.min, deps: [] },
 				"avg": { fn: NOps.avg, deps: [] },
 				"stdev": { fn: NOps.stdev, deps: ["avg"] }
 			},
@@ -292,15 +294,16 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					var oldstats = clone(this.stats);
 
 					vals = vals.map(function (v) {
-						return { t: now, v: v, l: 1 };
+						return { t: now, v: v, l: 1, max: v, min: v };
 					});
 
-					if (!arr.length) arr.push({ t: now, v: 0, l: 0 });
+					if (!arr.length) arr.push({ t: now, v: 0, l: 0, max: -Infinity, min: Infinity });
 					var last = clone(arr[arr.length - 1]);
 
 					if (now - last.t < this._step) {
 						vals.forEach(function (v) {
 							last.v += v.v;last.l += 1;
+							last.max = Math.max(last.max, v.v), last.min = Math.min(last.min, v.v);
 						});
 						var oa = [arr.pop()],
 						    na = [last];
@@ -417,7 +420,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					var oldstats = clone(this.stats);
 
 					vals = vals.map(function (v) {
-						return { v: v, l: 1 };
+						return { v: v, l: 1, max: v, min: v };
 					});
 					vals.forEach(function (v) {
 						return _this3._arr.push(v);
@@ -493,6 +496,20 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				}for (var _i3 = 0; _i3 < lo; _i3++) {
 					currval -= olditems[_i3].v;
 				}return currval;
+			},
+			max: function max(currval, newitems, olditems, allitems, newstats, oldstats) {
+				var max = -Infinity,
+				    len = allitems.length;
+				for (var i = 0; i < len; i++) {
+					max = Math.max(max, allitems[i].max);
+				}return max;
+			},
+			min: function min(currval, newitems, olditems, allitems, newstats, oldstats) {
+				var min = Infinity,
+				    len = allitems.length;
+				for (var i = 0; i < len; i++) {
+					min = Math.min(min, allitems[i].min);
+				}return min;
 			},
 			avg: function avg(currval, newitems, olditems, allitems, newstats, oldstats) {
 				var ln = OPS.count(0, 0, 0, newitems),

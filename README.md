@@ -11,7 +11,7 @@ Time and Size sliding windows, capable of calculating incremental statistics, su
 * Numeric or category stats
 * Stats are calculated incrementally, using online algorithms
 * Core category stats: sum, frequency, mode
-* Core numeric stats: count, sum, avg, stdev
+* Core numeric stats: count, sum, min, max, avg, stdev
 * Plugable custom stats functions
 * Time windows are slided each second
 
@@ -74,6 +74,8 @@ The results will be something like:
 { count: 9,
   sum: 4.383476926850223,
   avg: 0.48705299187224704,
+	max: 0.9865126881294235,
+	min: 0.0023880687887007923,
   stdev:
    { avg: 0.48705299187224704,
      sqsum: 2.6772528231211963,
@@ -85,6 +87,8 @@ The results will be something like:
 { count: 994,
   sum: 495.03542685194975,
   avg: 0.4980235682615189,
+	max: 0.9865126881294235,
+	min: 0.0023880687887007923,	
   stdev:
    { avg: 0.4980235682615189,
      sqsum: 332.1783737578395,
@@ -214,6 +218,8 @@ The items in the newitems, olditems and allitems arrays, have the following form
 {
 	t : 1496843741554,   // Timestamp in unix format (ms)
 	v : 12.34,           // Total value for this slot
+	min : 2.4						 // Minimum of the accumulated values
+	max : 4.5						 // Maximum of the accumulated values
 	l : 4                // Values accumulated in this slot
 }
 ```
