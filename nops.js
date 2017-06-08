@@ -12,6 +12,18 @@ const OPS = {
 
 		return currval;
 	},
+	max(currval,newitems,olditems,allitems,newstats,oldstats) {
+		var max = -Infinity, len = allitems.length;
+		for(let i=0;i<len;i++)
+			max = Math.max(max,allitems[i].max);
+		return max;
+	},
+	min(currval,newitems,olditems,allitems,newstats,oldstats) {
+		var min = Infinity, len = allitems.length;
+		for(let i=0;i<len;i++)
+			min = Math.min(min,allitems[i].min);
+		return min;
+	},
 	avg(currval,newitems,olditems,allitems,newstats,oldstats) {
 		var
 			ln = OPS.count(0,0,0,newitems), lo = OPS.count(0,0,0,olditems),

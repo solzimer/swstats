@@ -12,7 +12,7 @@ const TYPES = {
 
 // Default operations
 const DEF_OPS = {
-	numeric : ["count","sum","avg","stdev"],
+	numeric : ["count","sum","max","min","avg","stdev"],
 	category : ["sum","freq","mode"]
 };
 
@@ -28,6 +28,8 @@ const OPS = {
 	numeric : {
 		"count" : {fn:NOps.count,deps:[]},
 		"sum" : {fn:NOps.sum,deps:[]},
+		"max" : {fn:NOps.max,deps:[]},
+		"min" : {fn:NOps.min,deps:[]},
 		"avg" : {fn:NOps.avg,deps:[]},
 		"stdev" : {fn:NOps.stdev,deps:["avg"]},
 	},
@@ -208,13 +210,17 @@ class TimeStats {
 		var type = this._type;
 		var oldstats = clone(this.stats);
 
-		vals = vals.map(v=>{return {t:now,v:v,l:1};});
+		vals = vals.map(v=>{return {t:now,v:v,l:1,max:v,min:v};});
 
-		if(!arr.length) arr.push({t:now,v:0,l:0});
+		if(!arr.length) arr.push({t:now,v:0,l:0,max:-Infinity,min:Infinity});
 		var last = clone(arr[arr.length-1]);
 
 		if(now-last.t < this._step) {
-			vals.forEach(v=>{last.v+=v.v; last.l+=1;});
+			vals.forEach(v=>{
+				last.v+=v.v; last.l+=1;
+				last.max = Math.max(last.max,v.v),
+				last.min = Math.min(last.min,v.v)
+			});
 			var oa = [arr.pop()], na = [last];
 			arr.push(last);
 			this._ops.forEach(op=>{
@@ -311,7 +317,7 @@ class SizeStats {
 		var type = this._type;
 		var oldstats = clone(this.stats);
 
-		vals = vals.map(v=>{return {v:v,l:1};});
+		vals = vals.map(v=>{return {v:v,l:1,max:v,min:v};});
 		vals.forEach(v=>this._arr.push(v));
 
 		while(this._arr.length>this._size) {
