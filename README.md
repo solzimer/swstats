@@ -25,7 +25,7 @@ Nodejs:
 ```javascript
 const	SWindow = require("swstats");
 
-// Create a time window of 10 secons. Each value pushed to
+// Create a time window of 10 seconds. Each value pushed to
 // the window will be stored in a unique slot (step:1)
 // Window will slide on each second
 var sw = new SWindow.TimeStats(10000,{step:1});
@@ -88,7 +88,7 @@ The results will be something like:
   sum: 495.03542685194975,
   avg: 0.4980235682615189,
   max: 0.9865126881294235,
-  min: 0.0023880687887007923,	
+  min: 0.0023880687887007923,
   stdev:
    { avg: 0.4980235682615189,
      sqsum: 332.1783737578395,
@@ -136,7 +136,7 @@ Pauses the window, so no slide occurs, but no new values will be added.
 Resumes a paused window. If shift is **true**, the timestamps of each slots will be shifted relative to the time the window is resumed, otherwise they keep their original timestamps. This will affect how the window is slided on the next second.
 
 ### destroy()
-Kill the window, so no new values will be added, and no slide will occur. Yoy can still access to its stats.
+Kill the window, so no new values will be added, and no slide will occur. You can still access to its stats.
 
 ### timeWindow.length
 Gets the current size of the window (number of slots)
