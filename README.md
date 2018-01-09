@@ -144,6 +144,9 @@ Gets the current size of the window (number of slots)
 ### timeWindow.stats
 Gets the current calculated stats
 
+### timeWindow.window
+Gets the current calculated stats per slot
+
 ## Size Window API
 ### new SWindow.SizeStats(size,[options])
 Creates a new size window with *size* slots. The window will slide when the maximum slots have been reached. *options* is optional, and can take the following parameters:
@@ -186,11 +189,14 @@ will consume two slots.
 ### sizeWindow.clean()
 Resets window and stats.
 
-### timeWindow.length
+### sizeWindow.length
 Gets the current size of the window (number of slots)
 
-### timeWindow.stats
+### sizeWindow.stats
 Gets the current calculated stats
+
+### timeWindow.window
+Gets the current calculated stats per slot
 
 ## Custom Statistics API
 ### SWindow.register(type,name,deps,fn,def)

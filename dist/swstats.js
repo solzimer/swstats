@@ -372,6 +372,21 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				get: function get() {
 					return this._arr.length;
 				}
+			}, {
+				key: "window",
+				get: function get() {
+					var _this3 = this;
+
+					var type = this._type;
+					var win = this._arr.map(function (slot) {
+						var ops = {};
+						_this3._ops.forEach(function (op) {
+							ops[op] = OPS[type][op].fn(undefined, [slot], [], [slot], ops, {});
+						});
+						return ops;
+					});
+					return win;
+				}
 			}]);
 
 			return TimeStats;
@@ -417,7 +432,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 			}, {
 				key: "_pushNum",
 				value: function _pushNum(vals) {
-					var _this3 = this;
+					var _this4 = this;
 
 					var arr = this._arr,
 					    old = [];
@@ -428,7 +443,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 						return { v: v, l: 1, max: v, min: v };
 					});
 					vals.forEach(function (v) {
-						return _this3._arr.push(v);
+						return _this4._arr.push(v);
 					});
 
 					while (this._arr.length > this._size) {
@@ -436,7 +451,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					}
 
 					this._ops.forEach(function (op) {
-						_this3.stats[op] = OPS[type][op].fn(_this3.stats[op], vals, old, arr, _this3.stats, oldstats);
+						_this4.stats[op] = OPS[type][op].fn(_this4.stats[op], vals, old, arr, _this4.stats, oldstats);
 					});
 
 					return this;
@@ -444,7 +459,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 			}, {
 				key: "_pushCat",
 				value: function _pushCat(vals) {
-					var _this4 = this;
+					var _this5 = this;
 
 					var arr = this._arr,
 					    old = [];
@@ -463,7 +478,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					}
 
 					this._ops.forEach(function (op) {
-						_this4.stats[op] = OPS[type][op].fn(_this4.stats[op], [map], old, arr, _this4.stats, oldstats);
+						_this5.stats[op] = OPS[type][op].fn(_this5.stats[op], [map], old, arr, _this5.stats, oldstats);
 					});
 
 					return this;
@@ -477,6 +492,21 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				key: "length",
 				get: function get() {
 					return this._arr.length;
+				}
+			}, {
+				key: "window",
+				get: function get() {
+					var _this6 = this;
+
+					var type = this._type;
+					var win = this._arr.map(function (slot) {
+						var ops = {};
+						_this6._ops.forEach(function (op) {
+							ops[op] = OPS[type][op].fn(undefined, [slot], [], [slot], ops, {});
+						});
+						return ops;
+					});
+					return win;
 				}
 			}]);
 

@@ -274,6 +274,18 @@ class TimeStats {
 		return this;
 	}
 
+	get window() {
+		let type = this._type;
+		let win = this._arr.map(slot=>{
+			let ops = {};
+			this._ops.forEach(op=>{
+				ops[op] = OPS[type][op].fn(undefined,[slot],[],[slot],ops,{});
+			});
+			return ops;
+		});
+		return win;
+	}
+
 	toJSON() {
 		return this.stats;
 	}
@@ -358,9 +370,21 @@ class SizeStats {
 		return this;
 	}
 
+	get window() {
+		let type = this._type;
+		let win = this._arr.map(slot=>{
+			let ops = {};
+			this._ops.forEach(op=>{
+				ops[op] = OPS[type][op].fn(undefined,[slot],[],[slot],ops,{});
+			});
+			return ops;
+		});
+		return win;
+	}
+
 	toJSON() {
 		return this.stats;
-	}	
+	}
 }
 
 module.exports = {
