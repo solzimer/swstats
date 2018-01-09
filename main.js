@@ -277,7 +277,7 @@ class TimeStats {
 	get window() {
 		let type = this._type;
 		let win = this._arr.map(slot=>{
-			let ops = {};
+			let ops = {t:slot.t};
 			this._ops.forEach(op=>{
 				ops[op] = OPS[type][op].fn(undefined,[slot],[],[slot],ops,{});
 			});
