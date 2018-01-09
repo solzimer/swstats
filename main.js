@@ -273,6 +273,10 @@ class TimeStats {
 
 		return this;
 	}
+
+	toJSON() {
+		return this.stats;
+	}
 }
 
 /**
@@ -353,6 +357,10 @@ class SizeStats {
 
 		return this;
 	}
+
+	toJSON() {
+		return this.stats;
+	}	
 }
 
 module.exports = {
