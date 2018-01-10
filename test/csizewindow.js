@@ -1,5 +1,5 @@
 const
-	SWindow = require("../main.js"),
+	SWindow = require("../index"),
 	SizeStats = SWindow.SizeStats,
 	assert = require('assert');
 

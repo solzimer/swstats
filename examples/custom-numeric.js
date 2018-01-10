@@ -1,4 +1,4 @@
-const SWindow = require("../main.js");
+const SWindow = require("../index");
 
 // Calculates the variance
 SWindow.register("numeric","variance",["stdev"],

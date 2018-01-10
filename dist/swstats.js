@@ -1,8 +1,8 @@
 "use strict";
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -22,10 +22,21 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 		"use strict";
 
 		(function ($) {
-			var SWindow = require("./main.js");
+			var SWindow = require("./index");
 			$.SWindow = SWindow;
 		})(window);
-	}, { "./main.js": 3 }], 2: [function (require, module, exports) {
+	}, { "./index": 2 }], 2: [function (require, module, exports) {
+		var Operation = require("./lib/ops"),
+		    TimeStats = require("./lib/timestats"),
+		    SizeStats = require("./lib/sizestats");
+
+		module.exports = {
+			TimeStats: TimeStats,
+			SizeStats: SizeStats,
+			Operation: Operation,
+			register: Operation.register
+		};
+	}, { "./lib/ops": 4, "./lib/sizestats": 6, "./lib/timestats": 7 }], 3: [function (require, module, exports) {
 		module.exports = {
 			sum: function sum(currval, newitems, olditems, allitems, newstats, oldstats) {
 				currval = currval === undefined ? {} : currval;
@@ -66,18 +77,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				return (map.pop() || {}).k;
 			}
 		};
-	}, {}], 3: [function (require, module, exports) {
-		var NOps = require("./nops.js");
-		var COps = require("./cops.js");
-
-		var IVAL = 1000; // Slide window interval
-		var LIST = []; // Active window instances
-
-		// Stats function type constants
-		var TYPES = {
-			numeric: "numeric",
-			category: "category"
-		};
+	}, {}], 4: [function (require, module, exports) {
+		var NOps = require("./nops"),
+		    COps = require("./cops");
 
 		// Default operations
 		var DEF_OPS = {
@@ -85,11 +87,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 			category: ["sum", "freq", "mode"]
 		};
 
-		// Default options
-		var DEF_OPTIONS = {
-			type: TYPES.numeric,
-			ops: DEF_OPS.numeric,
-			step: 1000
+		// Stats function type constants
+		var TYPES = {
+			numeric: "numeric",
+			category: "category"
 		};
 
 		// Registered operations
@@ -110,20 +111,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 		};
 
 		/**
-   * Simple object clone function
-   */
-		function clone(obj) {
-			if ((typeof obj === "undefined" ? "undefined" : _typeof(obj)) != "object") {
-				return obj;
-			} else {
-				var o = {};
-				for (var i in obj) {
-					o[i] = clone(obj[i]);
-				}return o;
-			}
-		}
-
-		/**
    * Registers a new operation
    * @param type [TYPES.numeric / TYPES.category]
    * @param name The name of the stat function
@@ -137,388 +124,15 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 			if (def) DEF_OPS[type].push(name);
 		}
 
-		function depends(a, b, type) {
-			var deps = OPS[type][a].deps;
-			if (!deps.length) return false;else if (deps.indexOf(b) >= 0) return true;else {
-				return deps.reduce(function (curr, val) {
-					return curr || depends(val, b, type);
-				}, false);
-			}
-		}
-
-		/**
-   * Sorts category operations by its dependencies
-   */
-		function sortOps(ops, type) {
-			var map = {},
-			    n = false;
-
-			ops.forEach(function (op) {
-				return map[op] = true;
-			});
-			do {
-				n = false;
-				ops.forEach(function (op) {
-					OPS[type][op].deps.forEach(function (dep) {
-						if (!map[dep]) {
-							map[dep] = true;
-							ops.push(dep);
-							n = true;
-						};
-					});
-				});
-			} while (n);
-
-			// Stupid sort because Array.sort will not work with dependency sorting
-			if (ops.length > 1) {
-				var tmp = null,
-				    it = false;
-				do {
-					it = false;
-					for (var i = 0; i < ops.length; i++) {
-						for (var j = i; j < ops.length; j++) {
-							if (depends(ops[i], ops[j], type)) {
-								tmp = ops[i];
-								ops[i] = ops[j];
-								ops[j] = tmp;
-								it = true;
-							}
-						}
-					}
-				} while (it);
-			}
-		}
-
-		/**
-   * Slide time window interval
-   */
-		setInterval(function () {
-			var now = Date.now();
-
-			// For each stat created object
-			LIST.filter(function (sws) {
-				return !sws._pause;
-			}).forEach(function (sws) {
-				var arr = sws._arr,
-				    time = sws._time;
-				var type = sws._type;
-				var old = [];
-				var oldstats = clone(sws.stats);
-
-				// Remove slots whose date has expired
-				while (arr.length && now - arr[0].t > time) {
-					old.push(arr.shift());
-				} // Execute each stat operation over the remaining slots
-				sws._ops.forEach(function (op) {
-					sws.stats[op] = OPS[type][op].fn(sws.stats[op], [], old, sws._arr, sws.stats, oldstats);
-				});
-			});
-		}, IVAL);
-
-		/**
-   * TimeStats Slide Window
-   * @param time Time (ms) of the duration of the window, before slide
-   * @param options Object
-   */
-
-		var TimeStats = function () {
-			function TimeStats(time, options) {
-				_classCallCheck(this, TimeStats);
-
-				options = options || DEF_OPTIONS;
-				this._options = options;
-				this._arr = [];
-				this._time = time || 10000;
-				this._type = options.type || DEF_OPTIONS.type;
-				this._ops = options.ops || DEF_OPS[this._type];
-				this._step = options.step || DEF_OPTIONS.step;
-				this._pause = false;
-				this._active = true;
-				this._oldstats = {};
-				this.stats = clone(options.stats || {});
-
-				sortOps(this._ops, this._type);
-				LIST.push(this);
-			}
-
-			_createClass(TimeStats, [{
-				key: "clean",
-				value: function clean() {
-					this._arr = [];
-					this._oldstats = {};
-					this.stats = clone(this._options.stats || {});
-				}
-			}, {
-				key: "push",
-				value: function push(vals) {
-					if (!this._active || this._pause) return;
-
-					vals = vals instanceof Array ? vals : [vals];
-
-					return this._type == TYPES.numeric ? this._pushNum(vals) : this._pushCat(vals);
-				}
-			}, {
-				key: "pause",
-				value: function pause() {
-					this._pause = true;
-				}
-			}, {
-				key: "resume",
-				value: function resume(shift) {
-					var arr = this._arr;
-					if (shift && arr.length) {
-						var now = Date.now();
-						var last = arr[arr.length].t;
-						var diff = now - last;
-						arr.length.forEach(function (v) {
-							return v.t += diff;
-						});
-					}
-					this._pause = false;
-				}
-			}, {
-				key: "destroy",
-				value: function destroy() {
-					var idx = LIST.indexOf(this);
-					LIST.splice(idx, 1);
-					this._active = false;
-				}
-			}, {
-				key: "_pushNum",
-				value: function _pushNum(vals) {
-					var _this = this;
-
-					var now = Date.now();
-					var arr = this._arr;
-					var type = this._type;
-					var oldstats = clone(this.stats);
-
-					vals = vals.map(function (v) {
-						return { t: now, v: v, l: 1, max: v, min: v };
-					});
-
-					if (!arr.length) arr.push({ t: now, v: 0, l: 0, max: -Infinity, min: Infinity });
-					var last = clone(arr[arr.length - 1]);
-
-					if (now - last.t < this._step) {
-						vals.forEach(function (v) {
-							last.v += v.v;last.l += 1;
-							last.max = Math.max(last.max, v.v), last.min = Math.min(last.min, v.v);
-						});
-						var oa = [arr.pop()],
-						    na = [last];
-						arr.push(last);
-						this._ops.forEach(function (op) {
-							_this.stats[op] = OPS[type][op].fn(_this.stats[op], na, oa, arr, _this.stats, oldstats);
-						});
-					} else {
-						vals.forEach(function (v) {
-							arr.push(v);
-						});
-						this._ops.forEach(function (op) {
-							_this.stats[op] = OPS[type][op].fn(_this.stats[op], vals, [], arr, _this.stats, oldstats);
-						});
-					}
-
-					return this;
-				}
-			}, {
-				key: "_pushCat",
-				value: function _pushCat(vals) {
-					var _this2 = this;
-
-					var now = Date.now();
-					var arr = this._arr;
-					var type = this._type;
-					var oldstats = clone(this.stats);
-					var map = {};
-
-					vals.forEach(function (v) {
-						map[v] = map[v] || 0;
-						map[v]++;
-					});
-
-					if (!arr.length) arr.push({ t: now, v: {} });
-					var last = clone(arr[arr.length - 1]);
-
-					if (now - last.t < this._step) {
-						for (var i in map) {
-							last.v[i] = last.v[i] || 0;
-							last.v[i] += map[i];
-						}
-						var oa = [arr.pop()],
-						    na = [last];
-						arr.push(last);
-						this._ops.forEach(function (op) {
-							_this2.stats[op] = OPS[type][op].fn(_this2.stats[op], na, oa, arr, _this2.stats, oldstats);
-						});
-					} else {
-						var item = { t: now, v: map };
-						arr.push(item);
-						this._ops.forEach(function (op) {
-							_this2.stats[op] = OPS[type][op].fn(_this2.stats[op], [item], [], arr, _this2.stats, oldstats);
-						});
-					}
-
-					return this;
-				}
-			}, {
-				key: "toJSON",
-				value: function toJSON() {
-					return this.stats;
-				}
-			}, {
-				key: "length",
-				get: function get() {
-					return this._arr.length;
-				}
-			}, {
-				key: "window",
-				get: function get() {
-					var _this3 = this;
-
-					var type = this._type;
-					var win = this._arr.map(function (slot) {
-						var ops = {};
-						_this3._ops.forEach(function (op) {
-							ops[op] = OPS[type][op].fn(undefined, [slot], [], [slot], ops, {});
-						});
-						return ops;
-					});
-					return win;
-				}
-			}]);
-
-			return TimeStats;
-		}();
-
-		/**
-   * SizeStats Slide Window
-   * @param size Number of maximum slots before slide
-   * @param options Object
-   */
-
-
-		var SizeStats = function () {
-			function SizeStats(size, options) {
-				_classCallCheck(this, SizeStats);
-
-				options = options || DEF_OPTIONS;
-
-				this._options = options;
-				this._arr = [];
-				this._size = size || 1000;
-				this._type = options.type || DEF_OPTIONS.type;
-				this._ops = options.ops || DEF_OPS[this._type];
-				this.stats = clone(options.stats || {});
-
-				sortOps(this._ops, this._type);
-			}
-
-			_createClass(SizeStats, [{
-				key: "clean",
-				value: function clean() {
-					this._arr = [];
-					this._oldstats = {};
-					this.stats = clone(this._options.stats || {});
-				}
-			}, {
-				key: "push",
-				value: function push(vals) {
-					vals = vals instanceof Array ? vals : [vals];
-
-					return this._type == TYPES.numeric ? this._pushNum(vals) : this._pushCat(vals);
-				}
-			}, {
-				key: "_pushNum",
-				value: function _pushNum(vals) {
-					var _this4 = this;
-
-					var arr = this._arr,
-					    old = [];
-					var type = this._type;
-					var oldstats = clone(this.stats);
-
-					vals = vals.map(function (v) {
-						return { v: v, l: 1, max: v, min: v };
-					});
-					vals.forEach(function (v) {
-						return _this4._arr.push(v);
-					});
-
-					while (this._arr.length > this._size) {
-						old.push(this._arr.shift());
-					}
-
-					this._ops.forEach(function (op) {
-						_this4.stats[op] = OPS[type][op].fn(_this4.stats[op], vals, old, arr, _this4.stats, oldstats);
-					});
-
-					return this;
-				}
-			}, {
-				key: "_pushCat",
-				value: function _pushCat(vals) {
-					var _this5 = this;
-
-					var arr = this._arr,
-					    old = [];
-					var type = this._type;
-					var oldstats = clone(this.stats);
-					var map = { v: {} };
-
-					vals.forEach(function (v) {
-						map.v[v] = map.v[v] || 0;
-						map.v[v]++;
-					});
-					this._arr.push(map);
-
-					while (this._arr.length > this._size) {
-						old.push(this._arr.shift());
-					}
-
-					this._ops.forEach(function (op) {
-						_this5.stats[op] = OPS[type][op].fn(_this5.stats[op], [map], old, arr, _this5.stats, oldstats);
-					});
-
-					return this;
-				}
-			}, {
-				key: "toJSON",
-				value: function toJSON() {
-					return this.stats;
-				}
-			}, {
-				key: "length",
-				get: function get() {
-					return this._arr.length;
-				}
-			}, {
-				key: "window",
-				get: function get() {
-					var _this6 = this;
-
-					var type = this._type;
-					var win = this._arr.map(function (slot) {
-						var ops = {};
-						_this6._ops.forEach(function (op) {
-							ops[op] = OPS[type][op].fn(undefined, [slot], [], [slot], ops, {});
-						});
-						return ops;
-					});
-					return win;
-				}
-			}]);
-
-			return SizeStats;
-		}();
-
 		module.exports = {
-			TimeStats: TimeStats,
-			SizeStats: SizeStats,
+			NOps: NOps,
+			COps: COps,
+			RXOps: OPS,
+			DEFOps: DEF_OPS,
+			Types: TYPES,
 			register: register
 		};
-	}, { "./cops.js": 2, "./nops.js": 4 }], 4: [function (require, module, exports) {
+	}, { "./cops": 3, "./nops": 5 }], 5: [function (require, module, exports) {
 		var OPS = {
 			count: function count(currval, newitems, olditems, allitems, newstats, oldstats) {
 				var t = 0,
@@ -607,5 +221,437 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 		};
 
 		module.exports = OPS;
-	}, {}] }, {}, [1]);
+	}, {}], 6: [function (require, module, exports) {
+		var Operation = require("./ops"),
+		    Util = require("./util"),
+		    Types = Operation.Types,
+		    RXOps = Operation.RXOps,
+		    DEFOps = Operation.DEFOps;
+
+		// Default options
+		var DEF_OPTIONS = {
+			type: Types.numeric,
+			ops: DEFOps.numeric,
+			step: 1000
+		};
+
+		/**
+   * SizeStats Slide Window
+   * @class
+   */
+
+		var SizeStats = function () {
+			/**
+    * @param {numeric} size Number of maximum slots before slide
+    * @param {[type]} options Options
+    */
+			function SizeStats(size, options) {
+				_classCallCheck(this, SizeStats);
+
+				options = options || DEF_OPTIONS;
+
+				this._options = options;
+				this._arr = [];
+				this._size = size || 1000;
+				this._type = options.type || DEF_OPTIONS.type;
+				this._ops = options.ops || DEFOps[this._type];
+				this.stats = Util.clone(options.stats || {});
+
+				Util.sortOps(this._ops, this._type);
+			}
+
+			_createClass(SizeStats, [{
+				key: "clean",
+				value: function clean() {
+					this._arr = [];
+					this._oldstats = {};
+					this.stats = Util.clone(this._options.stats || {});
+				}
+			}, {
+				key: "push",
+				value: function push(vals) {
+					vals = vals instanceof Array ? vals : [vals];
+
+					return this._type == Types.numeric ? this._pushNum(vals) : this._pushCat(vals);
+				}
+			}, {
+				key: "_pushNum",
+				value: function _pushNum(vals) {
+					var _this = this;
+
+					var arr = this._arr,
+					    old = [];
+					var type = this._type;
+					var oldstats = Util.clone(this.stats);
+
+					vals = vals.map(function (v) {
+						return { v: v, l: 1, max: v, min: v };
+					});
+					vals.forEach(function (v) {
+						return _this._arr.push(v);
+					});
+
+					while (this._arr.length > this._size) {
+						old.push(this._arr.shift());
+					}
+
+					this._ops.forEach(function (op) {
+						_this.stats[op] = RXOps[type][op].fn(_this.stats[op], vals, old, arr, _this.stats, oldstats);
+					});
+
+					return this;
+				}
+			}, {
+				key: "_pushCat",
+				value: function _pushCat(vals) {
+					var _this2 = this;
+
+					var arr = this._arr,
+					    old = [];
+					var type = this._type;
+					var oldstats = Util.clone(this.stats);
+					var map = { v: {} };
+
+					vals.forEach(function (v) {
+						map.v[v] = map.v[v] || 0;
+						map.v[v]++;
+					});
+					this._arr.push(map);
+
+					while (this._arr.length > this._size) {
+						old.push(this._arr.shift());
+					}
+
+					this._ops.forEach(function (op) {
+						_this2.stats[op] = RXOps[type][op].fn(_this2.stats[op], [map], old, arr, _this2.stats, oldstats);
+					});
+
+					return this;
+				}
+			}, {
+				key: "toJSON",
+				value: function toJSON() {
+					return this.stats;
+				}
+			}, {
+				key: "length",
+				get: function get() {
+					return this._arr.length;
+				}
+			}, {
+				key: "window",
+				get: function get() {
+					var _this3 = this;
+
+					var type = this._type;
+					var win = this._arr.map(function (slot) {
+						var ops = {};
+						_this3._ops.forEach(function (op) {
+							ops[op] = RXOps[type][op].fn(undefined, [slot], [], [slot], ops, {});
+						});
+						return ops;
+					});
+					return win;
+				}
+			}]);
+
+			return SizeStats;
+		}();
+
+		module.exports = SizeStats;
+	}, { "./ops": 4, "./util": 8 }], 7: [function (require, module, exports) {
+		var Operation = require("./ops"),
+		    Util = require("./util"),
+		    Types = Operation.Types,
+		    RXOps = Operation.RXOps,
+		    DEFOps = Operation.DEFOps;
+
+		// Default options
+		var DEF_OPTIONS = {
+			type: Types.numeric,
+			ops: DEFOps.numeric,
+			step: 1000
+		};
+
+		var IVAL = 1000; // Slide window interval
+		var LIST = []; // Active window instances
+
+		/**
+   * Slide time window interval
+   */
+		setInterval(function () {
+			var now = Date.now();
+
+			// For each stat created object
+			LIST.filter(function (sws) {
+				return !sws._pause;
+			}).forEach(function (sws) {
+				var arr = sws._arr,
+				    time = sws._time;
+				var type = sws._type;
+				var old = [];
+				var oldstats = Util.clone(sws.stats);
+
+				// Remove slots whose date has expired
+				while (arr.length && now - arr[0].t > time) {
+					old.push(arr.shift());
+				} // Execute each stat operation over the remaining slots
+				sws._ops.forEach(function (op) {
+					sws.stats[op] = RXOps[type][op].fn(sws.stats[op], [], old, sws._arr, sws.stats, oldstats);
+				});
+			});
+		}, IVAL);
+
+		/**
+   * TimeStats Slide Window
+   * @class
+   */
+
+		var TimeStats = function () {
+			/**
+    * @param {numeric} time	Time (ms) of the duration of the window, before slide
+    * @param {object} options	options
+    */
+			function TimeStats(time, options) {
+				_classCallCheck(this, TimeStats);
+
+				options = options || DEF_OPTIONS;
+				this._options = options;
+				this._arr = [];
+				this._time = time || 10000;
+				this._type = options.type || DEF_OPTIONS.type;
+				this._ops = options.ops || DEFOps[this._type];
+				this._step = options.step || DEF_OPTIONS.step;
+				this._pause = false;
+				this._active = true;
+				this._oldstats = {};
+				this.stats = Util.clone(options.stats || {});
+
+				Util.sortOps(this._ops, this._type);
+				LIST.push(this);
+			}
+
+			_createClass(TimeStats, [{
+				key: "clean",
+				value: function clean() {
+					this._arr = [];
+					this._oldstats = {};
+					this.stats = Util.clone(this._options.stats || {});
+				}
+			}, {
+				key: "push",
+				value: function push(vals) {
+					if (!this._active || this._pause) return;
+
+					vals = vals instanceof Array ? vals : [vals];
+
+					return this._type == Types.numeric ? this._pushNum(vals) : this._pushCat(vals);
+				}
+			}, {
+				key: "pause",
+				value: function pause() {
+					this._pause = true;
+				}
+			}, {
+				key: "resume",
+				value: function resume(shift) {
+					var arr = this._arr;
+					if (shift && arr.length) {
+						var now = Date.now();
+						var last = arr[arr.length].t;
+						var diff = now - last;
+						arr.length.forEach(function (v) {
+							return v.t += diff;
+						});
+					}
+					this._pause = false;
+				}
+			}, {
+				key: "destroy",
+				value: function destroy() {
+					var idx = LIST.indexOf(this);
+					LIST.splice(idx, 1);
+					this._active = false;
+				}
+			}, {
+				key: "_pushNum",
+				value: function _pushNum(vals) {
+					var _this4 = this;
+
+					var now = Date.now();
+					var arr = this._arr;
+					var type = this._type;
+					var oldstats = Util.clone(this.stats);
+
+					vals = vals.map(function (v) {
+						return { t: now, v: v, l: 1, max: v, min: v };
+					});
+
+					if (!arr.length) arr.push({ t: now, v: 0, l: 0, max: -Infinity, min: Infinity });
+					var last = Util.clone(arr[arr.length - 1]);
+
+					if (now - last.t < this._step) {
+						vals.forEach(function (v) {
+							last.v += v.v;last.l += 1;
+							last.max = Math.max(last.max, v.v), last.min = Math.min(last.min, v.v);
+						});
+						var oa = [arr.pop()],
+						    na = [last];
+						arr.push(last);
+						this._ops.forEach(function (op) {
+							_this4.stats[op] = RXOps[type][op].fn(_this4.stats[op], na, oa, arr, _this4.stats, oldstats);
+						});
+					} else {
+						vals.forEach(function (v) {
+							arr.push(v);
+						});
+						this._ops.forEach(function (op) {
+							_this4.stats[op] = RXOps[type][op].fn(_this4.stats[op], vals, [], arr, _this4.stats, oldstats);
+						});
+					}
+
+					return this;
+				}
+			}, {
+				key: "_pushCat",
+				value: function _pushCat(vals) {
+					var _this5 = this;
+
+					var now = Date.now();
+					var arr = this._arr;
+					var type = this._type;
+					var oldstats = Util.clone(this.stats);
+					var map = {};
+
+					vals.forEach(function (v) {
+						map[v] = map[v] || 0;
+						map[v]++;
+					});
+
+					if (!arr.length) arr.push({ t: now, v: {} });
+					var last = Util.clone(arr[arr.length - 1]);
+
+					if (now - last.t < this._step) {
+						for (var i in map) {
+							last.v[i] = last.v[i] || 0;
+							last.v[i] += map[i];
+						}
+						var oa = [arr.pop()],
+						    na = [last];
+						arr.push(last);
+						this._ops.forEach(function (op) {
+							_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], na, oa, arr, _this5.stats, oldstats);
+						});
+					} else {
+						var item = { t: now, v: map };
+						arr.push(item);
+						this._ops.forEach(function (op) {
+							_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], [item], [], arr, _this5.stats, oldstats);
+						});
+					}
+
+					return this;
+				}
+			}, {
+				key: "toJSON",
+				value: function toJSON() {
+					return this.stats;
+				}
+			}, {
+				key: "length",
+				get: function get() {
+					return this._arr.length;
+				}
+			}, {
+				key: "window",
+				get: function get() {
+					var _this6 = this;
+
+					var type = this._type;
+					var win = this._arr.map(function (slot) {
+						var ops = { t: slot.t };
+						_this6._ops.forEach(function (op) {
+							ops[op] = RXOps[type][op].fn(undefined, [slot], [], [slot], ops, {});
+						});
+						return ops;
+					});
+					return win;
+				}
+			}]);
+
+			return TimeStats;
+		}();
+
+		module.exports = TimeStats;
+	}, { "./ops": 4, "./util": 8 }], 8: [function (require, module, exports) {
+		var RXOps = require("./ops").RXOps;
+
+		/**
+   * Simple object clone function
+   */
+		function clone(obj) {
+			if ((typeof obj === "undefined" ? "undefined" : _typeof(obj)) != "object") {
+				return obj;
+			} else {
+				var o = {};
+				for (var i in obj) {
+					o[i] = clone(obj[i]);
+				}return o;
+			}
+		}
+
+		function depends(a, b, type) {
+			var deps = RXOps[type][a].deps;
+			if (!deps.length) return false;else if (deps.indexOf(b) >= 0) return true;else {
+				return deps.reduce(function (curr, val) {
+					return curr || depends(val, b, type);
+				}, false);
+			}
+		}
+
+		/**
+   * Sorts category operations by its dependencies
+   */
+		function sortOps(ops, type) {
+			var map = {},
+			    n = false;
+
+			ops.forEach(function (op) {
+				return map[op] = true;
+			});
+			do {
+				n = false;
+				ops.forEach(function (op) {
+					RXOps[type][op].deps.forEach(function (dep) {
+						if (!map[dep]) {
+							map[dep] = true;
+							ops.push(dep);
+							n = true;
+						};
+					});
+				});
+			} while (n);
+
+			// Stupid sort because Array.sort will not work with dependency sorting
+			if (ops.length > 1) {
+				var tmp = null,
+				    it = false;
+				do {
+					it = false;
+					for (var i = 0; i < ops.length; i++) {
+						for (var j = i; j < ops.length; j++) {
+							if (depends(ops[i], ops[j], type)) {
+								tmp = ops[i];
+								ops[i] = ops[j];
+								ops[j] = tmp;
+								it = true;
+							}
+						}
+					}
+				} while (it);
+			}
+		}
+
+		module.exports = { clone: clone, depends: depends, sortOps: sortOps };
+	}, { "./ops": 4 }] }, {}, [1]);
 //# sourceMappingURL=swstats.js.map

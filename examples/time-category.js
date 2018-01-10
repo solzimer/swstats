@@ -1,5 +1,5 @@
 const
-	SWindow = require("../main.js"),
+	SWindow = require("../index"),
 	TimeStats = SWindow.TimeStats;
 
 SWindow.register("category","threshold",["freq"],(curr,nvals,ovals,vals,nstats,ostats)=>{

@@ -1,4 +1,4 @@
-const	TimeStats = require("../main.js").TimeStats;
+const	TimeStats = require("../index").TimeStats;
 
 // Create a time window of 10 secons.
 // Window will slide on each second

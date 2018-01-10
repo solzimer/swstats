@@ -1,6 +1,6 @@
 "use strict";
 
 (function($) {
-	var SWindow = require("./main.js");
+	var SWindow = require("./index");
 	$.SWindow = SWindow;
 })(window);
