@@ -329,11 +329,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					return this;
 				}
 			}, {
-				key: "toJSON",
-				value: function toJSON() {
-					return this.stats;
-				}
-			}, {
 				key: "length",
 				get: function get() {
 					return this._arr.length;
@@ -551,11 +546,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					}
 
 					return this;
-				}
-			}, {
-				key: "toJSON",
-				value: function toJSON() {
-					return this.stats;
 				}
 			}, {
 				key: "length",
