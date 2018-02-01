@@ -8,6 +8,7 @@ Time and Size sliding windows, capable of calculating incremental statistics, su
 ## Features
 * Nodejs and Browser compatible
 * Time or size windows (not both)
+* Global time or custom specified timestamp
 * Numeric or category stats
 * Stats are calculated incrementally, using online algorithms
 * Core category stats: sum, frequency, mode
@@ -101,6 +102,9 @@ The results will be something like:
 Creates a new time window of *time* duration. The window will slide on each second.
 *options* is optional, and can take the following parameters:
 * **step**: Time step for each time slot. When a new value is added to the window, it can be stored in a new slot, or use the last one, depending on the time that value was inserted. If *step* is **10**, that means that if a new value is inserted after 10 ms. from the last one, a new slot will be created for this value. Otherwise, the value will be added and grouped to the last slot. **By default, time step is 1000 ms**. High values will prevent the window increasing and consuming memory over time for long windows, but some stats will lose accuracy (such as stdev).
+* **timestamp** Defines how time is measured. Can take the following values:
+	* **TimeStats.TS.ABSOLUTE** This is the default value. When a value is pushed to the window, it takes the current machine timestamp. In this mode, windows are naturally slided in real-time.
+	* **TimeStats.TS.RELATIVE** With this mode, you can push values that has an associated timestamp that is independent of the machine time. Windows are slided based on the max and min inserted timestamps. This mode is less performant, but allows you to insert values out of time order.
 * **type**: Value types for this window. Can take the values *"numeric"* or *"category"*. **By default, windows are numeric**.
 * **ops**: Statistic operations to perform on the window values. If you don't need all the core functions, or want to add a new custom operation, you can pass an array of operation names. By default, for numeric stats, *ops* are *["count","sum","avg","stdev"]*, and for category *["sum","freq","mode"]*
 * **stats**: Object with pre-initialized stats values.
@@ -110,7 +114,7 @@ Example:
 const SWindow = require("swstats");
 
 // Time window of 10 seconds
-vat tw = new SWindow.TimeStats(10000,{
+var tw1 = new SWindow.TimeStats(10000,{
 	step:1000,      // Values will be accumulated in slots of 1 second
 	type:"numeric", // Numeric values
 	ops:["sum"],    // We only want to sum values
@@ -118,11 +122,23 @@ vat tw = new SWindow.TimeStats(10000,{
 		sum : 233     // Initial value where sum will start
 	}
 });
+
+// Time window of 10 seconds with relative timestamp
+var tw2 = new SWindow.TimeStats(10000,{
+	timestamp:TimeStats.TS.RELATIVE,
+	step:1000,      // Values will be accumulated in slots of 1 second
+	type:"numeric" // Numeric values
+});
 ```
 
 ### timeWindow.push(val)
 Adds a new value to the window. It will consume a new slot or be added to the current one, depending on the *step* value.
-
+If timestamp mode is absolute, simply push the value, but if relative is activated, you must push
+an object with value and timestamp:
+```javascript
+tw1.push(10);
+tw2.push({ts:Date.now(),v:10});
+```
 ### timeWindow.push([vals])
 Adds multiple values at once, in the same manner as *push(val)*.
 
@@ -143,9 +159,38 @@ Gets the current size of the window (number of slots)
 
 ### timeWindow.stats
 Gets the current calculated stats
+```javascript
+{ count: 9,
+  sum: 4.638591015963949,
+  max: 0.8745422003577794,
+  min: 0.04623850021742104,
+  avg: 0.5153990017737722,
+  stdev:
+   { avg: 0.5153990017737722,
+     sqsum: 3.044764166996456,
+     sum: 4.638591015963949,
+     stdev: 0.26957558983867996 } }
+```
 
 ### timeWindow.window
 Gets the current calculated stats per slot
+```javascript
+[ { t: 1517499437649,
+    sum: { David: 571, John: 404 },
+    freq: { David: 0.5856410256410256, John: 0.41435897435897434 },
+    mode: 'David',
+    threshold: { David: false, John: false } },
+  { t: 1517499438649,
+    sum: { John: 398, David: 580 },
+    freq: { John: 0.4069529652351738, David: 0.5930470347648262 },
+    mode: 'David',
+    threshold: { John: false, David: false } },
+  { t: 1517499439649,
+    sum: { David: 449, John: 274 },
+    freq: { David: 0.6210235131396957, John: 0.3789764868603043 },
+    mode: 'David',
+    threshold: { David: true, John: false } } ]
+```
 
 ## Size Window API
 ### new SWindow.SizeStats(size,[options])
