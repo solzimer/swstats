@@ -4,6 +4,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 (function e(t, n, r) {
@@ -403,10 +405,22 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
    */
 
 		var TimeStats = function () {
-			/**
-    * @param {numeric} time	Time (ms) of the duration of the window, before slide
-    * @param {object} options	options
-    */
+			_createClass(TimeStats, null, [{
+				key: "TS",
+				get: function get() {
+					return {
+						ABSOLUTE: "absolute",
+						RELATIVE: "relative"
+					};
+				}
+
+				/**
+     * @param {numeric} time	Time (ms) of the duration of the window, before slide
+     * @param {object} options	options
+     */
+
+			}]);
+
 			function TimeStats(time, options) {
 				_classCallCheck(this, TimeStats);
 
@@ -414,16 +428,19 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				this._options = options;
 				this._arr = [];
 				this._time = time || 10000;
+				this._tst = options.timestamp || TimeStats.TS.ABSOLUTE;
 				this._type = options.type || DEF_OPTIONS.type;
 				this._ops = options.ops || DEFOps[this._type];
 				this._step = options.step || DEF_OPTIONS.step;
 				this._pause = false;
 				this._active = true;
 				this._oldstats = {};
+				this._mints = Infinity;
+				this._maxts = -Infinity;
 				this.stats = Util.clone(options.stats || {});
 
 				Util.sortOps(this._ops, this._type);
-				LIST.push(this);
+				if (this._tst == TimeStats.TS.ABSOLUTE) LIST.push(this);
 			}
 
 			_createClass(TimeStats, [{
@@ -440,7 +457,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 					vals = vals instanceof Array ? vals : [vals];
 
-					return this._type == Types.numeric ? this._pushNum(vals) : this._pushCat(vals);
+					if (this._tst == TimeStats.TS.ABSOLUTE) {
+						return this._type == Types.numeric ? this._pushNum(vals) : this._pushCat(vals);
+					} else {
+						return this._type == Types.numeric ? this._pushNumRel(vals) : this._pushCatRel(vals);
+					}
 				}
 			}, {
 				key: "pause",
@@ -465,7 +486,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				key: "destroy",
 				value: function destroy() {
 					var idx = LIST.indexOf(this);
-					LIST.splice(idx, 1);
+					if (idx >= 0) LIST.splice(idx, 1);
 					this._active = false;
 				}
 			}, {
@@ -473,26 +494,39 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 				value: function _pushNum(vals) {
 					var _this4 = this;
 
-					var now = Date.now();
-					var arr = this._arr;
-					var type = this._type;
-					var oldstats = Util.clone(this.stats);
+					var now = Date.now(),
+					    arr = this._arr,
+					    type = this._type,
+					    oldstats = Util.clone(this.stats);
 
+					// Map values to stat object
 					vals = vals.map(function (v) {
 						return { t: now, v: v, l: 1, max: v, min: v };
 					});
 
+					// First slot in array
 					if (!arr.length) arr.push({ t: now, v: 0, l: 0, max: -Infinity, min: Infinity });
-					var last = Util.clone(arr[arr.length - 1]);
 
+					// Get last slot
+					var last = arr[arr.length - 1];
+
+					// Value fits in current slot
 					if (now - last.t < this._step) {
+						// Clone the current slot to make the diff
+						last = Util.clone(last);
+
+						// Acumulate on the slot copy
 						vals.forEach(function (v) {
 							last.v += v.v;last.l += 1;
 							last.max = Math.max(last.max, v.v), last.min = Math.min(last.min, v.v);
 						});
+
+						// Remove the original slot and push the copy
 						var oa = [arr.pop()],
 						    na = [last];
 						arr.push(last);
+
+						// Apply operations
 						this._ops.forEach(function (op) {
 							_this4.stats[op] = RXOps[type][op].fn(_this4.stats[op], na, oa, arr, _this4.stats, oldstats);
 						});
@@ -508,9 +542,96 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 					return this;
 				}
 			}, {
+				key: "_pushNumRel",
+				value: function _pushNumRel(vals) {
+					var _this5 = this;
+
+					var now = Date.now(),
+					    arr = this._arr,
+					    type = this._type,
+					    oldstats = Util.clone(this.stats);
+
+					vals = vals.map(function (v) {
+						return { t: v.t || now, v: v.v, l: 1, max: v.v, min: v.v };
+					});
+
+					vals.forEach(function (v) {
+						// First element
+						if (!arr.length) {
+							arr.push(v);
+							_this5._mints = v.t;
+							_this5._maxts = v.t;
+							return;
+						}
+
+						// Ignore values older than current time window
+						var tsdist = _this5._maxts - v.t;
+						if (tsdist > _this5._time) return;
+
+						// Find the closest slot by time difference
+						var tss = arr.map(function (slot, i) {
+							return { dt: Math.abs(slot.t - v.t), i: i };
+						}).sort(function (a, b) {
+							return b.dt - a.dt;
+						}).pop();
+						var slot = arr[tss.i];
+
+						// Value fits in this slot
+						if (Math.abs(v.t - slot.t) < _this5._step) {
+							var cloned = Util.clone(slot);
+
+							cloned.v += v.v;cloned.l += 1;
+							cloned.max = Math.max(cloned.max, v.v), cloned.min = Math.min(cloned.min, v.v
+
+							// Remove the original slot and push the copy
+							);var oa = arr.splice(tss.i, 1),
+							    na = [cloned];
+							arr.push(cloned);
+
+							// Apply operations
+							_this5._ops.forEach(function (op) {
+								_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], na, oa, arr, _this5.stats, oldstats);
+							});
+						}
+						// Create a new slot
+						else {
+								arr.push(v);
+								_this5._ops.forEach(function (op) {
+									_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], [v], [], arr, _this5.stats, oldstats);
+								});
+							}
+
+						// Update window time range
+						_this5._mints = Math.min(v.t, _this5._mints);
+						_this5._maxts = Math.max(v.t, _this5._maxts);
+						oldstats = Util.clone(_this5.stats);
+					});
+
+					// Sort window
+					arr.sort(function (a, b) {
+						return a.t - b.t;
+					});
+
+					// Remove old slots
+					var old = [];
+					while (Math.abs(this._mints - this._maxts) > this._time) {
+						old.push(arr.shift());
+						this._mints = arr[0].t;
+					}
+
+					// Refresh operations
+					if (old.length) {
+						this._ops.forEach(function (op) {
+							_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], [], old, arr, _this5.stats, oldstats);
+						});
+					}
+
+					return this;
+				}
+			}, {
 				key: "_pushCat",
 				value: function _pushCat(vals) {
-					var _this5 = this;
+					var _this6 = this;
 
 					var now = Date.now();
 					var arr = this._arr;
@@ -535,13 +656,96 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 						    na = [last];
 						arr.push(last);
 						this._ops.forEach(function (op) {
-							_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], na, oa, arr, _this5.stats, oldstats);
+							_this6.stats[op] = RXOps[type][op].fn(_this6.stats[op], na, oa, arr, _this6.stats, oldstats);
 						});
 					} else {
 						var item = { t: now, v: map };
 						arr.push(item);
 						this._ops.forEach(function (op) {
-							_this5.stats[op] = RXOps[type][op].fn(_this5.stats[op], [item], [], arr, _this5.stats, oldstats);
+							_this6.stats[op] = RXOps[type][op].fn(_this6.stats[op], [item], [], arr, _this6.stats, oldstats);
+						});
+					}
+
+					return this;
+				}
+			}, {
+				key: "_pushCatRel",
+				value: function _pushCatRel(vals) {
+					var _this7 = this;
+
+					var arr = this._arr,
+					    type = this._type,
+					    oldstats = Util.clone(this.stats);
+
+					vals.forEach(function (v) {
+						// First element
+						if (!arr.length) {
+							arr.push({ t: v.t, v: _defineProperty({}, v.v, 1) });
+							_this7._mints = v.t;
+							_this7._maxts = v.t;
+							return;
+						}
+
+						// Ignore values older than current time window
+						var tsdist = _this7._maxts - v.t;
+						if (tsdist > _this7._time) return;
+
+						// Find the closest slot by time difference
+						var tss = arr.map(function (slot, i) {
+							return { dt: Math.abs(slot.t - v.t), i: i };
+						}).sort(function (a, b) {
+							return b.dt - a.dt;
+						}).pop();
+						var slot = arr[tss.i];
+
+						// Value fits in this slot
+						if (Math.abs(v.t - slot.t) < _this7._step) {
+							var cloned = Util.clone(slot);
+
+							cloned.v[v.v] = cloned.v[v.v] || 0;
+							cloned.v[v.v] += 1;
+
+							// Remove the original slot and push the copy
+							var oa = arr.splice(tss.i, 1),
+							    na = [cloned];
+							arr.push(cloned);
+
+							// Apply operations
+							_this7._ops.forEach(function (op) {
+								_this7.stats[op] = RXOps[type][op].fn(_this7.stats[op], na, oa, arr, _this7.stats, oldstats);
+							});
+						}
+						// Create a new slot
+						else {
+								var newslot = { t: v.t, v: _defineProperty({}, v.v, 1) };
+								arr.push(newslot);
+								_this7._ops.forEach(function (op) {
+									_this7.stats[op] = RXOps[type][op].fn(_this7.stats[op], newslot, [], arr, _this7.stats, oldstats);
+								});
+							}
+
+						// Update window time range
+						_this7._mints = Math.min(v.t, _this7._mints);
+						_this7._maxts = Math.max(v.t, _this7._maxts);
+						oldstats = Util.clone(_this7.stats);
+					});
+
+					// Sort window
+					arr.sort(function (a, b) {
+						return a.t - b.t;
+					});
+
+					// Remove old slots
+					var old = [];
+					while (Math.abs(this._mints - this._maxts) > this._time) {
+						old.push(arr.shift());
+						this._mints = arr[0].t;
+					}
+
+					// Refresh operations
+					if (old.length) {
+						this._ops.forEach(function (op) {
+							_this7.stats[op] = RXOps[type][op].fn(_this7.stats[op], [], old, arr, _this7.stats, oldstats);
 						});
 					}
 
@@ -555,12 +759,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 			}, {
 				key: "window",
 				get: function get() {
-					var _this6 = this;
+					var _this8 = this;
 
 					var type = this._type;
 					var win = this._arr.map(function (slot) {
 						var ops = { t: slot.t };
-						_this6._ops.forEach(function (op) {
+						_this8._ops.forEach(function (op) {
 							ops[op] = RXOps[type][op].fn(undefined, [slot], [], [slot], ops, {});
 						});
 						return ops;
